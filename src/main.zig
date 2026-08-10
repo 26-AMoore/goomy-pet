@@ -2,6 +2,7 @@ const rl = @import("raylib");
 const std = @import("std");
 const utils = @import("utils.zig");
 const Sprite = utils.Sprite;
+const mouse = @import("mouse.zig");
 
 const configFlags = rl.ConfigFlags{ .window_transparent = true, .window_undecorated = true, .window_unfocused = true, .window_topmost = true, .window_resizable = false };
 
@@ -15,7 +16,7 @@ const windowH = V_windowH * V_Scale;
 const windowW = V_windowW * V_Scale;
 pub const target_fps = 30;
 
-const Animation = enum { GOOMY, MOOVY, DYING, BALLED, SNOOZIN };
+const Animation = enum { GOOMY, MOOVY, DYING, BALLED, SNOOZIN, EAT, FETCH };
 var current_animation: Animation = Animation.SNOOZIN;
 
 var prevMouseMiddle = false;
@@ -53,6 +54,7 @@ pub fn main(init: std.process.Init) anyerror!void {
     var movementVec: rl.Vector2 = .{ .x = 0, .y = 0 };
     var windowPos: rl.Vector2 = .{ .x = 100, .y = 100 };
     var renderButtons = false;
+    var smooving = true;
 
     // GOOMY
     var goomy = Sprite.new(try utils.loadTextureFromMem(@embedFile("sprites/goomy-sheet.png")), 2, 8, null);
@@ -61,13 +63,27 @@ pub fn main(init: std.process.Init) anyerror!void {
     var balled = Sprite.new(try utils.loadTextureFromMem(@embedFile("sprites/ball-sheet.png")), 1, 1, null);
     var snoozin = Sprite.new(try utils.loadTextureFromMem(@embedFile("sprites/sleepy-sheet.png")), 2, 50, null);
     snoozin.resetFrames = 120;
+    var eat = Sprite.new(try utils.loadTextureFromMem(@embedFile("sprites/yapmy-sheet.png")), 5, 20, null);
+    eat.resetFrames = 100;
+    var eatFrames: i32 = 0;
 
     // BUTTONS
-    const sleepButton = utils.Button.new(rl.Vector2{ .x = 0, .y = 0 }, try utils.loadTextureFromMem(@embedFile("sprites/sleep.png")));
+    const sleepButton = utils.Button.new(rl.Vector2{ .x = 10, .y = 0 }, try utils.loadTextureFromMem(@embedFile("sprites/sleep.png")));
+    const closeButton = utils.Button.new(rl.Vector2{ .x = 20, .y = 0 }, try utils.loadTextureFromMem(@embedFile("sprites/kill.png")));
+    var anchorButton = utils.Button.new(rl.Vector2{ .x = 0, .y = 0 }, try utils.loadTextureFromMem(@embedFile("sprites/anchor.png")));
+    const berryButton = utils.Button.new(rl.Vector2{ .x = 0, .y = 10 }, try utils.loadTextureFromMem(@embedFile("sprites/berry.png")));
+    const fetchButton = utils.Button.new(rl.Vector2{ .x = 10, .y = 10 }, try utils.loadTextureFromMem(@embedFile("sprites/fetch.png")));
 
     rl.setTargetFPS(target_fps);
 
     const renderTexture: rl.RenderTexture2D = try rl.loadRenderTexture(V_windowW, V_windowH);
+    const ui: rl.RenderTexture2D = try rl.loadRenderTexture(V_windowW, V_windowH);
+    const uiTextureSrc: rl.Rectangle = rl.Rectangle{
+        .x = 0.0,
+        .y = 0.0,
+        .width = V_windowW,
+        .height = -V_windowH,
+    };
     var renderTextureSrc: rl.Rectangle = rl.Rectangle{
         .x = 0.0,
         .y = 0.0,
@@ -90,6 +106,12 @@ pub fn main(init: std.process.Init) anyerror!void {
 
         if (!renderButtons) {
             switch (current_animation) {
+                Animation.FETCH => {
+                    const pos = try mouse.getGlobalMousePosition();
+                    std.debug.print("x{}y{}\n", .{ pos.x, pos.y });
+                    targetPos = pos;
+                    current_animation = Animation.MOOVY;
+                },
                 Animation.BALLED => {
                     if (mouseRight and !prevMouseRight) {
                         current_animation = Animation.GOOMY;
@@ -101,6 +123,13 @@ pub fn main(init: std.process.Init) anyerror!void {
                         windowPos = windowPos.add(delta);
 
                         rl.setWindowPosition(@trunc(windowPos.x), @trunc(windowPos.y));
+                    }
+                },
+                Animation.EAT => {
+                    eatFrames += 1;
+                    if (eatFrames == eat.resetFrames) {
+                        eatFrames = 0;
+                        current_animation = Animation.GOOMY;
                     }
                 },
                 Animation.SNOOZIN => {
@@ -117,9 +146,11 @@ pub fn main(init: std.process.Init) anyerror!void {
                     }
                 },
                 Animation.GOOMY => {
-                    if (random.intRangeAtMost(i32, 0, 120) == 1) {
-                        targetPos = .{ .x = @floatFromInt(random.intRangeAtMost(i32, 0, screenWidth - windowW)), .y = @floatFromInt(random.intRangeAtMost(i32, 0, screenHeight - windowH)) };
-                        current_animation = Animation.MOOVY;
+                    if (smooving) {
+                        if (random.intRangeAtMost(i32, 0, 120) == 1) {
+                            targetPos = .{ .x = @floatFromInt(random.intRangeAtMost(i32, 0, screenWidth - windowW)), .y = @floatFromInt(random.intRangeAtMost(i32, 0, screenHeight - windowH)) };
+                            current_animation = Animation.MOOVY;
+                        }
                     }
                     if (mouseRight and !prevMouseRight) {
                         current_animation = Animation.BALLED;
@@ -167,7 +198,7 @@ pub fn main(init: std.process.Init) anyerror!void {
                     goomy.update(null);
                     goomy.draw(.{ .x = 1, .y = 1 }, null);
                 },
-                Animation.MOOVY => {
+                Animation.MOOVY, Animation.FETCH => {
                     moovemy.update(null);
                     moovemy.draw(.{ .x = 1, .y = 1 }, null);
                 },
@@ -183,12 +214,55 @@ pub fn main(init: std.process.Init) anyerror!void {
                     snoozin.update(null);
                     snoozin.draw(.{ .x = 1, .y = 1 }, null);
                 },
-            }
-            if (renderButtons) {
-                sleepButton.draw();
+                Animation.EAT => {
+                    eat.update(null);
+                    eat.draw(.{ .x = 1, .y = 1 }, null);
+                },
             }
 
             frame = @mod((frame + 1), 60);
+        }
+        rl.endTextureMode();
+
+        rl.beginTextureMode(ui);
+        {
+            rl.clearBackground(.{ .a = 0, .r = 0, .b = 0, .g = 0 });
+            if (renderButtons) {
+                sleepButton.draw();
+                closeButton.draw();
+                anchorButton.draw();
+                berryButton.draw();
+                fetchButton.draw();
+
+                const mousePoint = rl.getMousePosition().scale(0.2);
+                // std.debug.print("x{} y{}\n", .{ mousePoint.x, mousePoint.y });
+
+                if (mouseLeft) {
+                    if (rl.checkCollisionPointRec(mousePoint, fetchButton.rec)) {
+                        renderButtons = false;
+                        current_animation = Animation.FETCH;
+                    }
+                    if (rl.checkCollisionPointRec(mousePoint, anchorButton.rec)) {
+                        smooving = !smooving;
+                        targetPos = windowPos;
+                        if (!smooving) {
+                            anchorButton.texture = try utils.loadTextureFromMem(@embedFile("sprites/anchor_x.png"));
+                        } else {
+                            anchorButton.texture = try utils.loadTextureFromMem(@embedFile("sprites/anchor.png"));
+                        }
+                        // std.debug.print("sdasda{}", .{smooving});
+                    } else if (rl.checkCollisionPointRec(mousePoint, sleepButton.rec)) {
+                        // make not mirror, make button location work with offset to window position and fuck with virtual
+                        current_animation = Animation.SNOOZIN;
+                    } else if (rl.checkCollisionPointRec(mousePoint, closeButton.rec)) {
+                        rl.endTextureMode();
+                        break;
+                    } else if (rl.checkCollisionPointRec(mousePoint, berryButton.rec)) {
+                        current_animation = Animation.EAT;
+                        renderButtons = false;
+                    } else {}
+                }
+            }
         }
         rl.endTextureMode();
 
@@ -201,6 +275,7 @@ pub fn main(init: std.process.Init) anyerror!void {
             renderTextureSrc.width = renderTextureSrc.width * -1;
         }
         rl.drawTexturePro(renderTexture.texture, renderTextureSrc, renderTextureDest, renderTextureOrig, 0, .white);
+        rl.drawTexturePro(ui.texture, uiTextureSrc, renderTextureDest, renderTextureOrig, 0, .white);
         // try drawFps();
         rl.endDrawing();
         prevMouseMiddle = mouseMiddle;
