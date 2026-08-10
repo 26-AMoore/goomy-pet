@@ -33,10 +33,10 @@ pub fn main(init: std.process.Init) anyerror!void {
     const random = prng.interface();
 
     rl.setConfigFlags(configFlags);
-    rl.setWindowIcon(try rl.loadImageFromMemory(".png", @embedFile("sprites/goomy.png")));
 
     rl.initWindow(windowW, windowH, "I love you <3");
     rl.setConfigFlags(configFlags);
+    rl.setWindowIcon(try rl.loadImageFromMemory(".png", @embedFile("sprites/goomy.png")));
     defer rl.closeWindow();
 
     rl.setExitKey(rl.KeyboardKey.null);
@@ -100,11 +100,13 @@ pub fn main(init: std.process.Init) anyerror!void {
                     current_animation = Animation.BALLED;
                 }
             },
-            else => {
-                if (random.intRangeAtMost(i32, 0, 120) == 1 and current_animation == Animation.GOOMY) {
+            Animation.GOOMY => {
+                if (random.intRangeAtMost(i32, 0, 120) == 1) {
                     targetPos = .{ .x = @floatFromInt(random.intRangeAtMost(i32, 0, screenWidth - windowW)), .y = @floatFromInt(random.intRangeAtMost(i32, 0, screenHeight - windowH)) };
                     current_animation = Animation.MOOVY;
                 }
+            },
+            else => {
                 if (current_animation == Animation.MOOVY) {
                     if (windowPos.subtract(targetPos).length() <= 5) {
                         current_animation = Animation.GOOMY;
@@ -117,9 +119,9 @@ pub fn main(init: std.process.Init) anyerror!void {
                 if (random.intRangeAtMost(i32, 0, 1200) == 1) {
                     current_animation = Animation.SNOOZIN;
                 }
-                if (mouseLeft and !prevMouseLeft) {
-                    current_animation = Animation.SNOOZIN;
-                }
+                // if (mouseLeft and !prevMouseLeft) {
+                //     current_animation = Animation.SNOOZIN;
+                // }
                 if (mouseRight and !prevMouseRight) {
                     current_animation = Animation.BALLED;
                 }
