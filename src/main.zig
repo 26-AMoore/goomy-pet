@@ -105,8 +105,28 @@ pub fn main(init: std.process.Init) anyerror!void {
                     targetPos = .{ .x = @floatFromInt(random.intRangeAtMost(i32, 0, screenWidth - windowW)), .y = @floatFromInt(random.intRangeAtMost(i32, 0, screenHeight - windowH)) };
                     current_animation = Animation.MOOVY;
                 }
+                if (mouseRight and !prevMouseRight) {
+                    current_animation = Animation.BALLED;
+                }
+                if (rl.isMouseButtonDown(rl.MouseButton.left)) {
+                    std.debug.print("triffered", .{});
+                    const delta = rl.getMouseDelta();
+                    windowPos = windowPos.add(delta);
+                    rl.setWindowPosition(@trunc(windowPos.x), @trunc(windowPos.y));
+                }
             },
             else => {
+                if (random.intRangeAtMost(i32, 0, 1200) == 1) {
+                    current_animation = Animation.SNOOZIN;
+                }
+                if (rl.isMouseButtonDown(rl.MouseButton.left)) {
+                    std.debug.print("triffered", .{});
+                    const delta = rl.getMouseDelta();
+                    windowPos = windowPos.add(delta);
+                }
+                if (mouseRight and !prevMouseRight) {
+                    current_animation = Animation.BALLED;
+                }
                 if (current_animation == Animation.MOOVY) {
                     if (windowPos.subtract(targetPos).length() <= 5) {
                         current_animation = Animation.GOOMY;
@@ -116,15 +136,6 @@ pub fn main(init: std.process.Init) anyerror!void {
                     }
                 }
                 rl.setWindowPosition(@trunc(windowPos.x), @trunc(windowPos.y));
-                if (random.intRangeAtMost(i32, 0, 1200) == 1) {
-                    current_animation = Animation.SNOOZIN;
-                }
-                // if (mouseLeft and !prevMouseLeft) {
-                //     current_animation = Animation.SNOOZIN;
-                // }
-                if (mouseRight and !prevMouseRight) {
-                    current_animation = Animation.BALLED;
-                }
             },
         }
 
