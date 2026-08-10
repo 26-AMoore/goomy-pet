@@ -33,6 +33,7 @@ pub fn main(init: std.process.Init) anyerror!void {
     const random = prng.interface();
 
     rl.setConfigFlags(configFlags);
+    rl.setWindowIcon(try rl.loadImageFromMemory(".png", @embedFile("sprites/goomy.png")));
 
     rl.initWindow(windowW, windowH, "I love you <3");
     rl.setConfigFlags(configFlags);
