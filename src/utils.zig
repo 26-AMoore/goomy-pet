@@ -40,3 +40,14 @@ pub const Sprite = struct {
         return Sprite{ .resetFrames = main.target_fps, .width = texture.width, .height = texture.height, .texture = texture, .spriteRect = spriteRect, .frames = frames, .framesPerSecond = framesPerSecond orelse frames, .frame = 0, .fps = fps };
     }
 };
+
+pub const Button = struct {
+    texture: rl.Texture2D,
+    rec: rl.Rectangle,
+    pub fn draw(self: Button) void {
+        rl.drawTexture(self.texture, @intFromFloat(self.rec.x), @intFromFloat(self.rec.y), .white);
+    }
+    pub fn new(position: rl.Vector2, texture: rl.Texture2D) Button {
+        return Button{ .texture = texture, .rec = rl.Rectangle{ .x = position.x, .y = position.y, .height = @floatFromInt(texture.height), .width = @floatFromInt(texture.width) } };
+    }
+};

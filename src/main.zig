@@ -18,11 +18,13 @@ pub const target_fps = 30;
 const Animation = enum { GOOMY, MOOVY, DYING, BALLED, SNOOZIN };
 var current_animation: Animation = Animation.SNOOZIN;
 
+var prevMouseMiddle = false;
 var prevMouseRight = false;
 var prevMouseLeft = false;
 
 var mouseRight = false;
 var mouseLeft = false;
+var mouseMiddle = false;
 
 // sprites
 
@@ -47,16 +49,21 @@ pub fn main(init: std.process.Init) anyerror!void {
 
     _ = .{ screenWidth, screenHeight, monitor };
 
-    var targetPos: rl.Vector2 = .{ .x = -1, .y = 0 };
+    var targetPos: rl.Vector2 = .{ .x = 0, .y = 0 };
     var movementVec: rl.Vector2 = .{ .x = 0, .y = 0 };
     var windowPos: rl.Vector2 = .{ .x = 100, .y = 100 };
+    var renderButtons = false;
 
+    // GOOMY
     var goomy = Sprite.new(try utils.loadTextureFromMem(@embedFile("sprites/goomy-sheet.png")), 2, 8, null);
     var moovemy = Sprite.new(try utils.loadTextureFromMem(@embedFile("sprites/moovemy-sheet.png")), 2, 8, null);
     var dying = Sprite.new(try utils.loadTextureFromMem(@embedFile("sprites/goonemy-sheet.png")), 19, 3, null);
     var balled = Sprite.new(try utils.loadTextureFromMem(@embedFile("sprites/ball-sheet.png")), 1, 1, null);
     var snoozin = Sprite.new(try utils.loadTextureFromMem(@embedFile("sprites/sleepy-sheet.png")), 2, 50, null);
     snoozin.resetFrames = 120;
+
+    // BUTTONS
+    const sleepButton = utils.Button.new(rl.Vector2{ .x = 0, .y = 0 }, try utils.loadTextureFromMem(@embedFile("sprites/sleep.png")));
 
     rl.setTargetFPS(target_fps);
 
@@ -79,64 +86,76 @@ pub fn main(init: std.process.Init) anyerror!void {
     while (!rl.windowShouldClose()) {
         mouseLeft = rl.isMouseButtonPressed(rl.MouseButton.left);
         mouseRight = rl.isMouseButtonPressed(rl.MouseButton.right);
-        switch (current_animation) {
-            Animation.BALLED => {
-                if (mouseRight and !prevMouseRight) {
-                    current_animation = Animation.GOOMY;
-                    windowPos = rl.getWindowPosition();
-                    targetPos = rl.getWindowPosition();
-                }
-            },
-            Animation.SNOOZIN => {
-                if (random.intRangeAtMost(i32, 0, 2400) == 1) {
-                    current_animation = Animation.GOOMY;
-                }
-                if (mouseLeft and !prevMouseLeft) {
-                    current_animation = Animation.GOOMY;
-                    windowPos = rl.getWindowPosition();
-                    targetPos = rl.getWindowPosition();
-                }
-                if (mouseRight and !prevMouseRight) {
-                    current_animation = Animation.BALLED;
-                }
-            },
-            Animation.GOOMY => {
-                if (random.intRangeAtMost(i32, 0, 120) == 1) {
-                    targetPos = .{ .x = @floatFromInt(random.intRangeAtMost(i32, 0, screenWidth - windowW)), .y = @floatFromInt(random.intRangeAtMost(i32, 0, screenHeight - windowH)) };
-                    current_animation = Animation.MOOVY;
-                }
-                if (mouseRight and !prevMouseRight) {
-                    current_animation = Animation.BALLED;
-                }
-                if (rl.isMouseButtonDown(rl.MouseButton.left)) {
-                    std.debug.print("triffered", .{});
-                    const delta = rl.getMouseDelta();
-                    windowPos = windowPos.add(delta);
-                    rl.setWindowPosition(@trunc(windowPos.x), @trunc(windowPos.y));
-                }
-            },
-            else => {
-                if (random.intRangeAtMost(i32, 0, 1200) == 1) {
-                    current_animation = Animation.SNOOZIN;
-                }
-                if (rl.isMouseButtonDown(rl.MouseButton.left)) {
-                    std.debug.print("triffered", .{});
-                    const delta = rl.getMouseDelta();
-                    windowPos = windowPos.add(delta);
-                }
-                if (mouseRight and !prevMouseRight) {
-                    current_animation = Animation.BALLED;
-                }
-                if (current_animation == Animation.MOOVY) {
-                    if (windowPos.subtract(targetPos).length() <= 5) {
+        mouseMiddle = rl.isMouseButtonPressed(rl.MouseButton.middle);
+
+        if (!renderButtons) {
+            switch (current_animation) {
+                Animation.BALLED => {
+                    if (mouseRight and !prevMouseRight) {
                         current_animation = Animation.GOOMY;
-                    } else {
-                        movementVec = targetPos.subtract(windowPos).normalize().clampValue(0, 10).scale(10);
-                        windowPos = windowPos.add(movementVec);
+                        windowPos = rl.getWindowPosition();
+                        targetPos = rl.getWindowPosition();
                     }
-                }
-                rl.setWindowPosition(@trunc(windowPos.x), @trunc(windowPos.y));
-            },
+                    if (rl.isMouseButtonDown(rl.MouseButton.left)) {
+                        const delta = rl.getMouseDelta();
+                        windowPos = windowPos.add(delta);
+
+                        rl.setWindowPosition(@trunc(windowPos.x), @trunc(windowPos.y));
+                    }
+                },
+                Animation.SNOOZIN => {
+                    if (random.intRangeAtMost(i32, 0, 2400) == 1) {
+                        current_animation = Animation.GOOMY;
+                    }
+                    if (mouseLeft and !prevMouseLeft) {
+                        current_animation = Animation.GOOMY;
+                        windowPos = rl.getWindowPosition();
+                        targetPos = rl.getWindowPosition();
+                    }
+                    if (mouseRight and !prevMouseRight) {
+                        current_animation = Animation.BALLED;
+                    }
+                },
+                Animation.GOOMY => {
+                    if (random.intRangeAtMost(i32, 0, 120) == 1) {
+                        targetPos = .{ .x = @floatFromInt(random.intRangeAtMost(i32, 0, screenWidth - windowW)), .y = @floatFromInt(random.intRangeAtMost(i32, 0, screenHeight - windowH)) };
+                        current_animation = Animation.MOOVY;
+                    }
+                    if (mouseRight and !prevMouseRight) {
+                        current_animation = Animation.BALLED;
+                    }
+                    if (rl.isMouseButtonDown(rl.MouseButton.left)) {
+                        const delta = rl.getMouseDelta();
+                        windowPos = windowPos.add(delta);
+                        rl.setWindowPosition(@trunc(windowPos.x), @trunc(windowPos.y));
+                    }
+                },
+                else => {
+                    if (random.intRangeAtMost(i32, 0, 1200) == 1) {
+                        current_animation = Animation.SNOOZIN;
+                    }
+                    if (rl.isMouseButtonDown(rl.MouseButton.left)) {
+                        const delta = rl.getMouseDelta();
+                        windowPos = windowPos.add(delta);
+                    }
+                    if (mouseRight and !prevMouseRight) {
+                        current_animation = Animation.BALLED;
+                    }
+                    if (current_animation == Animation.MOOVY) {
+                        if (windowPos.subtract(targetPos).length() <= 5) {
+                            current_animation = Animation.GOOMY;
+                        } else {
+                            movementVec = targetPos.subtract(windowPos).normalize().clampValue(0, 10).scale(10);
+                            windowPos = windowPos.add(movementVec);
+                        }
+                    }
+                    rl.setWindowPosition(@trunc(windowPos.x), @trunc(windowPos.y));
+                },
+            }
+        }
+
+        if (mouseMiddle and !prevMouseMiddle) {
+            renderButtons = !renderButtons;
         }
 
         rl.beginTextureMode(renderTexture);
@@ -165,8 +184,9 @@ pub fn main(init: std.process.Init) anyerror!void {
                     snoozin.draw(.{ .x = 1, .y = 1 }, null);
                 },
             }
-
-            std.debug.print("ALEX {}\n", .{current_animation});
+            if (renderButtons) {
+                sleepButton.draw();
+            }
 
             frame = @mod((frame + 1), 60);
         }
@@ -183,6 +203,7 @@ pub fn main(init: std.process.Init) anyerror!void {
         rl.drawTexturePro(renderTexture.texture, renderTextureSrc, renderTextureDest, renderTextureOrig, 0, .white);
         // try drawFps();
         rl.endDrawing();
+        prevMouseMiddle = mouseMiddle;
         prevMouseRight = mouseRight;
         prevMouseLeft = mouseLeft;
     }
