@@ -16,7 +16,9 @@ const windowH = V_windowH * V_Scale;
 const windowW = V_windowW * V_Scale;
 pub const target_fps = 30;
 
-const Animation = enum { GOOMY, MOOVY, DYING, BALLED, SNOOZIN, EAT, FETCH };
+var speed: f32 = 10;
+
+const Animation = enum { GOOMY, MOOVY, DYING, BALLED, SNOOZIN, EAT, FETCH, RUN, HEART };
 var current_animation: Animation = Animation.SNOOZIN;
 
 var prevMouseMiddle = false;
@@ -31,6 +33,7 @@ var mouseMiddle = false;
 
 pub fn main(init: std.process.Init) anyerror!void {
     const io = init.io;
+    speed = 10;
 
     var prng: std.Random.IoSource = .{ .io = io };
     const random = prng.interface();
@@ -66,6 +69,7 @@ pub fn main(init: std.process.Init) anyerror!void {
     var eat = Sprite.new(try utils.loadTextureFromMem(@embedFile("sprites/yapmy-sheet.png")), 5, 20, null);
     eat.resetFrames = 100;
     var eatFrames: i32 = 0;
+    var heartGoomy = Sprite.new(try utils.loadTextureFromMem(@embedFile("sprites/heartGoomy.png")), 1, 1, null);
 
     // BUTTONS
     const sleepButton = utils.Button.new(rl.Vector2{ .x = 10, .y = 0 }, try utils.loadTextureFromMem(@embedFile("sprites/sleep.png")));
@@ -73,6 +77,9 @@ pub fn main(init: std.process.Init) anyerror!void {
     var anchorButton = utils.Button.new(rl.Vector2{ .x = 0, .y = 0 }, try utils.loadTextureFromMem(@embedFile("sprites/anchor.png")));
     const berryButton = utils.Button.new(rl.Vector2{ .x = 0, .y = 10 }, try utils.loadTextureFromMem(@embedFile("sprites/berry.png")));
     const fetchButton = utils.Button.new(rl.Vector2{ .x = 10, .y = 10 }, try utils.loadTextureFromMem(@embedFile("sprites/fetch.png")));
+    var ballButton = utils.Button.new(rl.Vector2{ .x = 20, .y = 10 }, try utils.loadTextureFromMem(@embedFile("sprites/ball.png")));
+    const tagButton = utils.Button.new(rl.Vector2{ .x = 0, .y = 20 }, try utils.loadTextureFromMem(@embedFile("sprites/tag.png")));
+    const heartButton = utils.Button.new(rl.Vector2{ .x = 10, .y = 20 }, try utils.loadTextureFromMem(@embedFile("sprites/heart.png")));
 
     rl.setTargetFPS(target_fps);
 
@@ -106,11 +113,27 @@ pub fn main(init: std.process.Init) anyerror!void {
 
         if (!renderButtons) {
             switch (current_animation) {
+                Animation.HEART => {
+                    if (random.intRangeAtMost(i32, 0, 60) == 1) {
+                        current_animation = Animation.GOOMY;
+                    }
+                },
+                Animation.RUN => {
+                    var pos = try mouse.getGlobalMousePosition();
+                    pos.x = pos.x - windowW / 2;
+                    pos.y = pos.y - windowH / 2;
+                    current_animation = Animation.GOOMY;
+                },
                 Animation.FETCH => {
-                    const pos = try mouse.getGlobalMousePosition();
-                    std.debug.print("x{}y{}\n", .{ pos.x, pos.y });
+                    var pos = try mouse.getGlobalMousePosition();
+                    pos.x = pos.x - windowW / 2;
+                    pos.y = pos.y - windowH / 2;
                     targetPos = pos;
-                    current_animation = Animation.MOOVY;
+                    movementVec = targetPos.subtract(windowPos).normalize().clampValue(0, 10).scale(speed);
+                    windowPos = windowPos.add(movementVec);
+                    if (targetPos.subtract(windowPos).length() < 5) {
+                        current_animation = Animation.GOOMY;
+                    }
                 },
                 Animation.BALLED => {
                     if (mouseRight and !prevMouseRight) {
@@ -123,6 +146,9 @@ pub fn main(init: std.process.Init) anyerror!void {
                         windowPos = windowPos.add(delta);
 
                         rl.setWindowPosition(@trunc(windowPos.x), @trunc(windowPos.y));
+                    }
+                    if (random.intRangeAtMost(i32, 0, 2400) == 1) {
+                        current_animation = Animation.GOOMY;
                     }
                 },
                 Animation.EAT => {
@@ -176,7 +202,7 @@ pub fn main(init: std.process.Init) anyerror!void {
                         if (windowPos.subtract(targetPos).length() <= 5) {
                             current_animation = Animation.GOOMY;
                         } else {
-                            movementVec = targetPos.subtract(windowPos).normalize().clampValue(0, 10).scale(10);
+                            movementVec = targetPos.subtract(windowPos).normalize().clampValue(0, 10).scale(speed);
                             windowPos = windowPos.add(movementVec);
                         }
                     }
@@ -194,11 +220,15 @@ pub fn main(init: std.process.Init) anyerror!void {
             rl.clearBackground(.{ .a = 0, .r = 0, .b = 0, .g = 0 });
 
             switch (current_animation) {
+                Animation.HEART => {
+                    heartGoomy.update(null);
+                    heartGoomy.draw(.{ .x = 1, .y = 1 }, null);
+                },
                 Animation.GOOMY => {
                     goomy.update(null);
                     goomy.draw(.{ .x = 1, .y = 1 }, null);
                 },
-                Animation.MOOVY, Animation.FETCH => {
+                Animation.MOOVY, Animation.FETCH, Animation.RUN => {
                     moovemy.update(null);
                     moovemy.draw(.{ .x = 1, .y = 1 }, null);
                 },
@@ -233,12 +263,24 @@ pub fn main(init: std.process.Init) anyerror!void {
                 anchorButton.draw();
                 berryButton.draw();
                 fetchButton.draw();
+                ballButton.draw();
+                tagButton.draw();
+                heartButton.draw();
 
                 const mousePoint = rl.getMousePosition().scale(0.2);
                 // std.debug.print("x{} y{}\n", .{ mousePoint.x, mousePoint.y });
 
                 if (mouseLeft) {
-                    if (rl.checkCollisionPointRec(mousePoint, fetchButton.rec)) {
+                    if (rl.checkCollisionPointRec(mousePoint, heartButton.rec)) {
+                        current_animation = Animation.HEART;
+                        renderButtons = false;
+                    } else if (rl.checkCollisionPointRec(mousePoint, tagButton.rec)) {
+                        current_animation = Animation.RUN;
+                        renderButtons = false;
+                    } else if (rl.checkCollisionPointRec(mousePoint, ballButton.rec)) {
+                        current_animation = Animation.BALLED;
+                        renderButtons = false;
+                    } else if (rl.checkCollisionPointRec(mousePoint, fetchButton.rec)) {
                         renderButtons = false;
                         current_animation = Animation.FETCH;
                     }
@@ -250,10 +292,12 @@ pub fn main(init: std.process.Init) anyerror!void {
                         } else {
                             anchorButton.texture = try utils.loadTextureFromMem(@embedFile("sprites/anchor.png"));
                         }
+                        renderButtons = false;
                         // std.debug.print("sdasda{}", .{smooving});
                     } else if (rl.checkCollisionPointRec(mousePoint, sleepButton.rec)) {
                         // make not mirror, make button location work with offset to window position and fuck with virtual
                         current_animation = Animation.SNOOZIN;
+                        renderButtons = false;
                     } else if (rl.checkCollisionPointRec(mousePoint, closeButton.rec)) {
                         rl.endTextureMode();
                         break;
