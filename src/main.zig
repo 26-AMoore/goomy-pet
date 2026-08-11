@@ -268,7 +268,9 @@ pub fn main(init: std.process.Init) anyerror!void {
                 if (mouseLeft) {
                     if (rl.checkCollisionPointRec(mousePoint, flipButton.rec)) {
                         renderTextureSrc.width = renderTextureSrc.width * -1;
+                        std.debug.print("re{}", .{renderTextureSrc.width});
                         renderButtons = false;
+                        movementVec = .{ .x = 0, .y = 0 };
                     } else if (rl.checkCollisionPointRec(mousePoint, heartButton.rec)) {
                         current_animation = Animation.HEART;
                         renderButtons = false;
