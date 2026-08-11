@@ -80,6 +80,7 @@ pub fn main(init: std.process.Init) anyerror!void {
     var ballButton = utils.Button.new(rl.Vector2{ .x = 20, .y = 10 }, try utils.loadTextureFromMem(@embedFile("sprites/ball.png")));
     const tagButton = utils.Button.new(rl.Vector2{ .x = 0, .y = 20 }, try utils.loadTextureFromMem(@embedFile("sprites/tag.png")));
     const heartButton = utils.Button.new(rl.Vector2{ .x = 10, .y = 20 }, try utils.loadTextureFromMem(@embedFile("sprites/heart.png")));
+    const flipButton = utils.Button.new(rl.Vector2{ .x = 20, .y = 20 }, try utils.loadTextureFromMem(@embedFile("sprites/flip.png")));
 
     rl.setTargetFPS(target_fps);
 
@@ -122,7 +123,7 @@ pub fn main(init: std.process.Init) anyerror!void {
         if (!renderButtons) {
             switch (current_animation) {
                 Animation.HEART => {
-                    if (random.intRangeAtMost(i32, 0, 60) == 1) {
+                    if (random.intRangeAtMost(i32, 0, 120) == 1) {
                         current_animation = Animation.GOOMY;
                     }
                 },
@@ -144,11 +145,6 @@ pub fn main(init: std.process.Init) anyerror!void {
                     }
                 },
                 Animation.BALLED => {
-                    if (mouseRight and !prevMouseRight) {
-                        current_animation = Animation.GOOMY;
-                        windowPos = rl.getWindowPosition();
-                        targetPos = rl.getWindowPosition();
-                    }
                     if (rl.isMouseButtonDown(rl.MouseButton.left)) {
                         const delta = rl.getMouseDelta();
                         windowPos = windowPos.add(delta);
@@ -178,7 +174,7 @@ pub fn main(init: std.process.Init) anyerror!void {
                 },
                 Animation.GOOMY => {
                     if (smooving) {
-                        if (random.intRangeAtMost(i32, 0, 120) == 1) {
+                        if (random.intRangeAtMost(i32, 0, 60) == 1) {
                             targetPos = .{ .x = @floatFromInt(random.intRangeAtMost(i32, 0, screenWidth - windowW)), .y = @floatFromInt(random.intRangeAtMost(i32, 0, screenHeight - windowH)) };
                             current_animation = Animation.MOOVY;
                         }
@@ -265,12 +261,15 @@ pub fn main(init: std.process.Init) anyerror!void {
                 ballButton.draw();
                 tagButton.draw();
                 heartButton.draw();
+                flipButton.draw();
 
                 const mousePoint = rl.getMousePosition().scale(0.2);
-                // std.debug.print("x{} y{}\n", .{ mousePoint.x, mousePoint.y });
 
                 if (mouseLeft) {
-                    if (rl.checkCollisionPointRec(mousePoint, heartButton.rec)) {
+                    if (rl.checkCollisionPointRec(mousePoint, flipButton.rec)) {
+                        renderTextureSrc.width = renderTextureSrc.width * -1;
+                        renderButtons = false;
+                    } else if (rl.checkCollisionPointRec(mousePoint, heartButton.rec)) {
                         current_animation = Animation.HEART;
                         renderButtons = false;
                     } else if (rl.checkCollisionPointRec(mousePoint, tagButton.rec)) {
@@ -283,6 +282,7 @@ pub fn main(init: std.process.Init) anyerror!void {
                             rl.setWindowPosition(0, 0);
                             rl.setWindowSize(rl.getMonitorWidth(monitor), rl.getMonitorHeight(monitor));
 
+                            try std.Io.sleep(io, std.Io.Duration.fromMilliseconds(500), .awake);
                             var tagTime: f32 = 10.0;
 
                             while (tagginh and !rl.windowShouldClose()) {
@@ -291,10 +291,8 @@ pub fn main(init: std.process.Init) anyerror!void {
 
                                 targetPos = awayFromMouse;
                                 movementVec = targetPos.clampValue(-10, 10).scale(speed + tagTime);
-                                std.debug.print("TARGET x{}y{}\n", .{ targetPos.x, targetPos.y });
                                 windowPos = windowPos.add(movementVec);
                                 windowPos = windowPos.clamp(.{ .x = 0, .y = 0 }, .{ .x = @as(f32, @floatFromInt(rl.getScreenWidth())) - windowW, .y = @as(f32, @floatFromInt(rl.getScreenHeight())) - windowH });
-                                std.debug.print("winodw x{}y{}\n", .{ windowPos.x, windowPos.y });
 
                                 fetchTextureDest.x = windowPos.x;
                                 fetchTextureDest.y = windowPos.y;
@@ -317,7 +315,6 @@ pub fn main(init: std.process.Init) anyerror!void {
                                 }
 
                                 rl.clearBackground(.blank);
-                                try drawFps();
                                 fetchTextureDest.x = windowPos.x;
                                 fetchTextureDest.y = windowPos.y;
                                 rl.drawTexturePro(fetchTexture.texture, renderTextureSrc, fetchTextureDest, .{ .x = 0, .y = 0 }, 0, .white);
@@ -333,7 +330,11 @@ pub fn main(init: std.process.Init) anyerror!void {
                             continue;
                         }
                     } else if (rl.checkCollisionPointRec(mousePoint, ballButton.rec)) {
-                        current_animation = Animation.BALLED;
+                        if (current_animation == Animation.BALLED) {
+                            current_animation = Animation.GOOMY;
+                        } else {
+                            current_animation = Animation.BALLED;
+                        }
                         renderButtons = false;
                     } else if (rl.checkCollisionPointRec(mousePoint, fetchButton.rec)) {
                         renderButtons = false;
@@ -373,7 +374,6 @@ pub fn main(init: std.process.Init) anyerror!void {
                                 }
 
                                 rl.clearBackground(.blank);
-                                try drawFps();
                                 fetchTextureDest.x = windowPos.x;
                                 fetchTextureDest.y = windowPos.y;
                                 rl.drawTexturePro(fetchTexture.texture, renderTextureSrc, fetchTextureDest, .{ .x = 0, .y = 0 }, 0, .white);
@@ -398,10 +398,13 @@ pub fn main(init: std.process.Init) anyerror!void {
                             anchorButton.texture = try utils.loadTextureFromMem(@embedFile("sprites/anchor.png"));
                         }
                         renderButtons = false;
-                        // std.debug.print("sdasda{}", .{smooving});
                     } else if (rl.checkCollisionPointRec(mousePoint, sleepButton.rec)) {
                         // make not mirror, make button location work with offset to window position and fuck with virtual
-                        current_animation = Animation.SNOOZIN;
+                        if (current_animation == Animation.SNOOZIN) {
+                            current_animation = Animation.GOOMY;
+                        } else {
+                            current_animation = Animation.SNOOZIN;
+                        }
                         renderButtons = false;
                     } else if (rl.checkCollisionPointRec(mousePoint, closeButton.rec)) {
                         rl.endTextureMode();
