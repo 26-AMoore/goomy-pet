@@ -85,6 +85,8 @@ pub fn main(init: std.process.Init) anyerror!void {
 
     const renderTexture: rl.RenderTexture2D = try rl.loadRenderTexture(V_windowW, V_windowH);
     const ui: rl.RenderTexture2D = try rl.loadRenderTexture(V_windowW, V_windowH);
+    const fetchTexture = try rl.loadRenderTexture(V_windowW, V_windowH);
+
     const uiTextureSrc: rl.Rectangle = rl.Rectangle{
         .x = 0.0,
         .y = 0.0,
@@ -96,6 +98,12 @@ pub fn main(init: std.process.Init) anyerror!void {
         .y = 0.0,
         .width = V_windowW,
         .height = -V_windowH,
+    };
+    var fetchTextureDest: rl.Rectangle = rl.Rectangle{
+        .x = 0.0,
+        .y = 0.0,
+        .width = windowW,
+        .height = windowH,
     };
     const renderTextureDest: rl.Rectangle = rl.Rectangle{
         .x = 0.0,
@@ -275,6 +283,55 @@ pub fn main(init: std.process.Init) anyerror!void {
                         renderButtons = false;
                         current_animation = Animation.FETCH;
                         try io.sleep(std.Io.Duration.fromMilliseconds(500), .awake);
+                        rl.endTextureMode();
+                        // Yes this is horrendous 10 layers of indentation dont ask I just want it done
+                        { // FLOGIC
+                            var fetching = true;
+                            rl.setWindowPosition(0, 0);
+                            rl.setWindowSize(rl.getMonitorWidth(monitor), rl.getMonitorHeight(monitor));
+
+                            var fetchtime: f32 = 0.0;
+
+                            while (fetching and !rl.windowShouldClose()) {
+                                fetchtime += 0.05;
+                                targetPos = rl.getMousePosition().subtract(.{ .x = windowW / 2, .y = windowH / 2 });
+                                movementVec = targetPos.subtract(windowPos).normalize().clampValue(0, 10).scale(speed + fetchtime);
+                                windowPos = windowPos.add(movementVec);
+
+                                if (windowPos.subtract(targetPos).length() < 5) {
+                                    break;
+                                }
+
+                                rl.beginTextureMode(fetchTexture);
+                                rl.clearBackground(.blank);
+                                moovemy.update(null);
+                                moovemy.draw(.{ .x = 0, .y = 0 }, null);
+                                rl.endTextureMode();
+
+                                rl.beginDrawing();
+
+                                if (movementVec.x < 0 and renderTextureSrc.width < 0) {
+                                    renderTextureSrc.width = renderTextureSrc.width * -1;
+                                } else if (movementVec.x > 0 and renderTextureSrc.width > 0) {
+                                    renderTextureSrc.width = renderTextureSrc.width * -1;
+                                }
+
+                                rl.clearBackground(.blank);
+                                try drawFps();
+                                fetchTextureDest.x = windowPos.x;
+                                fetchTextureDest.y = windowPos.y;
+                                rl.drawTexturePro(fetchTexture.texture, renderTextureSrc, fetchTextureDest, .{ .x = 0, .y = 0 }, 0, .white);
+                                rl.endDrawing();
+
+                                if (rl.getCharPressed() == 'q') {
+                                    fetching = false;
+                                }
+                            }
+                            current_animation = Animation.GOOMY;
+                            rl.setWindowPosition(@intFromFloat(windowPos.x), @intFromFloat(windowPos.y));
+                            rl.setWindowSize(windowW, windowH);
+                            continue;
+                        }
                     }
                     if (rl.checkCollisionPointRec(mousePoint, anchorButton.rec)) {
                         smooving = !smooving;
