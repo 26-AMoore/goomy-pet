@@ -274,8 +274,64 @@ pub fn main(init: std.process.Init) anyerror!void {
                         current_animation = Animation.HEART;
                         renderButtons = false;
                     } else if (rl.checkCollisionPointRec(mousePoint, tagButton.rec)) {
-                        current_animation = Animation.RUN;
                         renderButtons = false;
+                        try io.sleep(std.Io.Duration.fromMilliseconds(500), .awake);
+                        rl.endTextureMode();
+                        // Yes this is horrendous 10 layers of indentation dont ask I just want it done
+                        { // TAGGING
+                            var tagginh = true;
+                            rl.setWindowPosition(0, 0);
+                            rl.setWindowSize(rl.getMonitorWidth(monitor), rl.getMonitorHeight(monitor));
+
+                            var tagTime: f32 = 10.0;
+
+                            while (tagginh and !rl.windowShouldClose()) {
+                                tagTime -= 0.01;
+                                const awayFromMouse = windowPos.add(.{ .x = windowW / 2, .y = windowH / 2 }).subtract(rl.getMousePosition()).normalize();
+
+                                targetPos = awayFromMouse;
+                                movementVec = targetPos.clampValue(-10, 10).scale(speed + tagTime);
+                                std.debug.print("TARGET x{}y{}\n", .{ targetPos.x, targetPos.y });
+                                windowPos = windowPos.add(movementVec);
+                                windowPos = windowPos.clamp(.{ .x = 0, .y = 0 }, .{ .x = @as(f32, @floatFromInt(rl.getScreenWidth())) - windowW, .y = @as(f32, @floatFromInt(rl.getScreenHeight())) - windowH });
+                                std.debug.print("winodw x{}y{}\n", .{ windowPos.x, windowPos.y });
+
+                                fetchTextureDest.x = windowPos.x;
+                                fetchTextureDest.y = windowPos.y;
+                                if (rl.checkCollisionPointRec(rl.getMousePosition(), fetchTextureDest)) {
+                                    break;
+                                }
+
+                                rl.beginTextureMode(fetchTexture);
+                                rl.clearBackground(.blank);
+                                moovemy.update(null);
+                                moovemy.draw(.{ .x = 0, .y = 0 }, null);
+                                rl.endTextureMode();
+
+                                rl.beginDrawing();
+
+                                if (movementVec.x < 0 and renderTextureSrc.width < 0) {
+                                    renderTextureSrc.width = renderTextureSrc.width * -1;
+                                } else if (movementVec.x > 0 and renderTextureSrc.width > 0) {
+                                    renderTextureSrc.width = renderTextureSrc.width * -1;
+                                }
+
+                                rl.clearBackground(.blank);
+                                try drawFps();
+                                fetchTextureDest.x = windowPos.x;
+                                fetchTextureDest.y = windowPos.y;
+                                rl.drawTexturePro(fetchTexture.texture, renderTextureSrc, fetchTextureDest, .{ .x = 0, .y = 0 }, 0, .white);
+                                rl.endDrawing();
+
+                                if (rl.getCharPressed() == 'q') {
+                                    tagginh = false;
+                                }
+                            }
+                            current_animation = Animation.GOOMY;
+                            rl.setWindowPosition(@intFromFloat(windowPos.x), @intFromFloat(windowPos.y));
+                            rl.setWindowSize(windowW, windowH);
+                            continue;
+                        }
                     } else if (rl.checkCollisionPointRec(mousePoint, ballButton.rec)) {
                         current_animation = Animation.BALLED;
                         renderButtons = false;
