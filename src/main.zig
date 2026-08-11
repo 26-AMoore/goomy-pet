@@ -167,9 +167,6 @@ pub fn main(init: std.process.Init) anyerror!void {
                         windowPos = rl.getWindowPosition();
                         targetPos = rl.getWindowPosition();
                     }
-                    if (mouseRight and !prevMouseRight) {
-                        current_animation = Animation.BALLED;
-                    }
                 },
                 Animation.GOOMY => {
                     if (smooving) {
@@ -177,9 +174,6 @@ pub fn main(init: std.process.Init) anyerror!void {
                             targetPos = .{ .x = @floatFromInt(random.intRangeAtMost(i32, 0, screenWidth - windowW)), .y = @floatFromInt(random.intRangeAtMost(i32, 0, screenHeight - windowH)) };
                             current_animation = Animation.MOOVY;
                         }
-                    }
-                    if (mouseRight and !prevMouseRight) {
-                        current_animation = Animation.BALLED;
                     }
                     if (rl.isMouseButtonDown(rl.MouseButton.left)) {
                         const delta = rl.getMouseDelta();
@@ -195,9 +189,6 @@ pub fn main(init: std.process.Init) anyerror!void {
                         const delta = rl.getMouseDelta();
                         windowPos = windowPos.add(delta);
                     }
-                    if (mouseRight and !prevMouseRight) {
-                        current_animation = Animation.BALLED;
-                    }
                     if (current_animation == Animation.MOOVY) {
                         if (windowPos.subtract(targetPos).length() <= 5) {
                             current_animation = Animation.GOOMY;
@@ -211,7 +202,7 @@ pub fn main(init: std.process.Init) anyerror!void {
             }
         }
 
-        if (mouseMiddle and !prevMouseMiddle) {
+        if (mouseRight and !prevMouseRight) {
             renderButtons = !renderButtons;
         }
 
