@@ -55,7 +55,7 @@ pub fn main(init: std.process.Init) anyerror!void {
 
     var targetPos: rl.Vector2 = .{ .x = 0, .y = 0 };
     var movementVec: rl.Vector2 = .{ .x = 0, .y = 0 };
-    var windowPos: rl.Vector2 = .{ .x = 100, .y = 100 };
+    var windowPos: rl.Vector2 = rl.getWindowPosition();
     var renderButtons = false;
     var smooving = true;
 
@@ -283,6 +283,7 @@ pub fn main(init: std.process.Init) anyerror!void {
                     } else if (rl.checkCollisionPointRec(mousePoint, fetchButton.rec)) {
                         renderButtons = false;
                         current_animation = Animation.FETCH;
+                        try io.sleep(std.Io.Duration.fromMilliseconds(500), .awake);
                     }
                     if (rl.checkCollisionPointRec(mousePoint, anchorButton.rec)) {
                         smooving = !smooving;
