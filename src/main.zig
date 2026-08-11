@@ -2,7 +2,6 @@ const rl = @import("raylib");
 const std = @import("std");
 const utils = @import("utils.zig");
 const Sprite = utils.Sprite;
-const mouse = @import("mouse.zig");
 
 const configFlags = rl.ConfigFlags{ .window_transparent = true, .window_undecorated = true, .window_unfocused = true, .window_topmost = true, .window_resizable = false };
 
@@ -19,7 +18,7 @@ pub const target_fps = 30;
 var speed: f32 = 10;
 
 const Animation = enum { GOOMY, MOOVY, DYING, BALLED, SNOOZIN, EAT, FETCH, RUN, HEART };
-var current_animation: Animation = Animation.SNOOZIN;
+var current_animation: Animation = Animation.HEART;
 
 var prevMouseMiddle = false;
 var prevMouseRight = false;
@@ -39,6 +38,7 @@ pub fn main(init: std.process.Init) anyerror!void {
     const random = prng.interface();
 
     rl.setConfigFlags(configFlags);
+    rl.setTraceLogLevel(rl.TraceLogLevel.none);
 
     rl.initWindow(windowW, windowH, "I love you <3");
     rl.setConfigFlags(configFlags);
@@ -128,18 +128,9 @@ pub fn main(init: std.process.Init) anyerror!void {
                     }
                 },
                 Animation.RUN => {
-                    var pos = try mouse.getGlobalMousePosition();
-                    pos.x = pos.x - windowW / 2;
-                    pos.y = pos.y - windowH / 2;
                     current_animation = Animation.GOOMY;
                 },
                 Animation.FETCH => {
-                    var pos = try mouse.getGlobalMousePosition();
-                    pos.x = pos.x - windowW / 2;
-                    pos.y = pos.y - windowH / 2;
-                    targetPos = pos;
-                    movementVec = targetPos.subtract(windowPos).normalize().clampValue(0, 10).scale(speed);
-                    windowPos = windowPos.add(movementVec);
                     if (targetPos.subtract(windowPos).length() < 5) {
                         current_animation = Animation.GOOMY;
                     }
