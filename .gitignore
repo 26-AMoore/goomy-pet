@@ -1,5 +1,4 @@
 zig-out/
 .zig-cache/
 zig-pkg/
-Goomy.app
 Goomy.app.zip
